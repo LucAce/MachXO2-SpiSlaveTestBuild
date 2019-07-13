@@ -5,9 +5,10 @@ Lattice MachXO2 Hardened SPI Slave Test Build
 
 ## Diamond Project:
 
+```
 ./prj/top/top.ldf       : Top level Lattice Diamond project file
 ./syn/top.lpf           : Design IO constraints/locations
-
+```
 
 ## Design:
 ```
