@@ -50,7 +50,7 @@ module top (
     output wire         MISO,               // SPI Slave Master In Slave Out
 
     // Debug Output
-    output wire[5:0]    DEBUG       		// DEBUG Output Signals
+    output wire[5:0]    DEBUG               // DEBUG Output Signals
 );
 
     //*************************************************************************
@@ -91,7 +91,7 @@ module top (
     internal_oscillator_inst (
         .STDBY              (1'b0                   ),
         .OSC                (clk                    ),
-		.SEDSTDBY			(					    )
+        .SEDSTDBY           (                       )
     );
 
     // Slave EFB module
