@@ -28,7 +28,7 @@
 //
 // Functional Description:
 //
-//   Simple top level test bench.
+//   Simple command test.
 //
 //*****************************************************************************
 
@@ -37,8 +37,6 @@
 module tb_top;
 
     `include "tb_common.v"
-
-    reg  [7:0]  address;
 
     //*************************************************************************
     // Test

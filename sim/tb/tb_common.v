@@ -28,7 +28,8 @@
 //
 // Functional Description:
 //
-//   Simple top level test bench.
+//   Common test bench functions and tasks.  This file is `included in the
+//   top level tests.
 //
 //*****************************************************************************
 
@@ -36,13 +37,13 @@
     //*************************************************************************
     // Parameter Definitions
     //*************************************************************************
-    parameter SPI_HALF_PERIOD = 1000;                   // 20Mhz
-    parameter SPI_DELAY       = 32*SPI_HALF_PERIOD;     // 8 SPI Clocks
+    parameter SPI_HALF_PERIOD = 1000;
+    parameter SPI_DELAY       = 32*SPI_HALF_PERIOD;
     parameter SPI_CSN_DELAY   = 10;
 
     // SPI Commands
-    `define SPI_CMD_PROTOCOL         8'hF0
-    `define SPI_CMD_REVISION         8'hF1
+    `define SPI_CMD_PROTOCOL    8'hF0
+    `define SPI_CMD_REVISION    8'hF1
 
 
     //*************************************************************************
@@ -57,8 +58,9 @@
 
     reg  [7:0]  bytetx [0:31];
     reg  [7:0]  byterx [0:31];
-	reg	 [7:0]  bytecount;
+    reg  [7:0]  bytecount;
     reg  [7:0]  i;
+
 
     //*************************************************************************
     // DUT Instantiation
@@ -102,14 +104,14 @@
         end
 
         for (i=0; i<bytecount; i=i+1) begin
-		    for (j=0; j<8; j=j+1) begin
-	            sclk = 1'b0;
-	            mosi = bytetx[i][7-j];
-	            #SPI_HALF_PERIOD;
-	            byterx[i][7-j] = miso;
-	            sclk = 1'b1;
-	            #SPI_HALF_PERIOD;
-			end
+            for (j=0; j<8; j=j+1) begin
+                sclk = 1'b0;
+                mosi = bytetx[i][7-j];
+                #SPI_HALF_PERIOD;
+                byterx[i][7-j] = miso;
+                sclk = 1'b1;
+                #SPI_HALF_PERIOD;
+            end
         end
 
         sclk = 1'b0;
@@ -134,7 +136,7 @@
         end
 
         bytetx[0] = `SPI_CMD_PROTOCOL;
-		bytecount = 3;
+        bytecount = 3;
 
         spi_cmd();
         if (byterx[2] == 8'h01)
@@ -154,7 +156,7 @@
         end
 
         bytetx[0] = `SPI_CMD_REVISION;
-		bytecount = 3;
+        bytecount = 3;
 
         spi_cmd();
         if (byterx[2] == 8'ha5)
@@ -174,7 +176,7 @@
         end
 
         bytetx[0] = 8'h00;
-		bytecount = 10;
+        bytecount = 10;
 
         spi_cmd();
 
