@@ -30,7 +30,7 @@ Lattice MachXO2 Hardened SPI Slave Test Build
     -> waves.do         : Active HDL do file to configure a waveform
 ```
 
-## Launch Simulation Using Active-HDL:
+### Launch Simulation Using Active-HDL:
 
 1.  Change the BASE_PATH attribute in the tb_spi_cmd.do file to the location of the files
 2.  Launch Active HDL
