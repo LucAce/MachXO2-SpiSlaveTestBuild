@@ -20,6 +20,9 @@ Lattice MachXO2 Hardened SPI Slave Test Build
 
 ## Test Bench:
 ```
+./rpi/
+  -> rpi_spi_test.py    : Raspberry Pi SPI command test script
+
 ./sim/
   -> tb/
     -> tb_common.v      : Common testbench tasks and functions, this file is `included
