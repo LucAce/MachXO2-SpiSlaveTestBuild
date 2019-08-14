@@ -6,11 +6,11 @@
         <Source name="../../rtl/ctrl.v" type="Verilog" type_short="Verilog">
             <Options/>
         </Source>
-        <Source name="../../rtl/slave_efb.v" type="Verilog" type_short="Verilog">
-            <Options/>
-        </Source>
         <Source name="../../rtl/top.v" type="Verilog" type_short="Verilog">
             <Options top_module="top"/>
+        </Source>
+        <Source name="../../rtl/slave_efb.v" type="Verilog" type_short="Verilog">
+            <Options/>
         </Source>
         <Source name="../../syn/top.lpf" type="Logic Preference" type_short="LPF">
             <Options/>

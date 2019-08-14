@@ -92,26 +92,24 @@ module ctrl #(
 
     // State Machine States
     `define S_INIT                   5'h00
-    `define S_SPICR1_CYC             5'h01
-    `define S_SPICR1_ACK             5'h02
-    `define S_SPICR2_CYC             5'h03
-    `define S_SPICR2_ACK             5'h04
-    `define S_WAIT_FOR_TIPN          5'h05
-    `define S_RXDR_DISCARD1          5'h06
-    `define S_RXDR_DISCARD2          5'h07
-    `define S_T1_TXDR                5'h08
-    `define S_WAIT_FOR_TIP           5'h09
-    `define S_T2_TRDY                5'h0A
-    `define S_T2_TXDR                5'h0B
-    `define S_R1_RRDY                5'h0C
-    `define S_R1_RXDR                5'h0D
-    `define S_T3_TRDY                5'h0E
-    `define S_T3_TXDR                5'h0F
-    `define S_RN_RRDY                5'h10
-    `define S_RN_RXDR                5'h11
-    `define S_RN_PROCESS             5'h12
-    `define S_TN_TRDY                5'h13
-    `define S_TN_TXDR                5'h14
+    `define S_SPICR1                 5'h01
+    `define S_SPICR2                 5'h02
+    `define S_WAIT_FOR_TIPN          5'h03
+    `define S_RXDR_DISCARD1          5'h04
+    `define S_RXDR_DISCARD2          5'h05
+    `define S_T1_TXDR                5'h06
+    `define S_WAIT_FOR_TIP           5'h07
+    `define S_T2_TRDY                5'h08
+    `define S_T2_TXDR                5'h09
+    `define S_R1_RRDY                5'h0A
+    `define S_R1_RXDR                5'h0B
+    `define S_T3_TRDY                5'h0C
+    `define S_T3_TXDR                5'h0D
+    `define S_RN_RRDY                5'h0E
+    `define S_RN_RXDR                5'h0F
+    `define S_RN_PROCESS             5'h10
+    `define S_TN_TRDY                5'h11
+    `define S_TN_TXDR                5'h12
 
     // Wishbone Cycle
     reg       wb_cyc;
@@ -127,8 +125,8 @@ module ctrl #(
     // Article ID 2416 and some documentation states
     // a delay is required to avoid a race condition
     // in the simulation model
-    assign #0.100 WB_STB_O = wb_cyc;
-    assign #0.100 WB_CYC_O = wb_cyc;
+    assign #1.000 WB_STB_O = wb_cyc;
+    assign #1.000 WB_CYC_O = wb_cyc;
 
     // Controller state machine
     always @(posedge CLK) begin
@@ -154,10 +152,12 @@ module ctrl #(
             WB_WE_O         <= `REQ_READ;
 
             // Set when the SPISR TIP is set
-            if      ((wb_cyc == 1'b1) && (WB_ADR_O == `SPISR) && (WB_DAT_I[7]==1'b1) && (WB_ACK_I==1'b1))
+            if      ( (wb_cyc      == 1'b1) && (WB_ADR_O == `SPISR) &&
+                      (WB_DAT_I[7] == 1'b1) && (WB_ACK_I == 1'b1) )
                 DEBUG[5] <= 1'b1;
             // Negate when SPISR TIPN is set
-            else if ((wb_cyc == 1'b1) && (WB_ADR_O == `SPISR) && (WB_DAT_I[7]==1'b0) && (WB_ACK_I==1'b1))
+            else if ( (wb_cyc      == 1'b1) && (WB_ADR_O == `SPISR) &&
+                      (WB_DAT_I[7] == 1'b0) && (WB_ACK_I == 1'b1) )
                 DEBUG[5] <= 1'b0;
 
             // Output state of FSM
@@ -170,80 +170,50 @@ module ctrl #(
             case (sm_state)
 
                 //*************************************************************
-                // State: Init
-                // Idle state.
+                // State: S_INIT
+                // Initialization state
                 //*************************************************************
                 `S_INIT: begin
-                    sm_state <= `S_SPICR1_CYC;
+                    sm_state <= `S_SPICR1;
                 end
 
                 //*************************************************************
-                // State: S_SPICR1_CYC
-                // Enable EFB SPI Interface (Cycle Phase)
+                // State: S_SPICR1
+                // Enable EFB SPI Interface
                 //*************************************************************
-                `S_SPICR1_CYC: begin
+                `S_SPICR1: begin
                     wb_cyc   <= 1'b1;
                     WB_ADR_O <= `SPICR1;
                     WB_DAT_O <= `SPICR1_CFG;
                     WB_WE_O  <= `REQ_WRITE;
+                    sm_state <= `S_SPICR1;
 
-                    sm_state <= `S_SPICR1_ACK;
+                    if (WB_ACK_I == 1'b1) begin
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
+                        sm_state <= `S_SPICR2;
+                    end
                 end
 
                 //*************************************************************
-                // State: S_SPICR1_ACK
-                // Enable EFB SPI Interface (Ack Phase)
+                // State: S_SPICR2
+                // Enable EFB SPI as a Slave
                 //*************************************************************
-                `S_SPICR1_ACK: begin
+                `S_SPICR2: begin
                     wb_cyc   <= 1'b1;
-                    WB_ADR_O <= `SPICR1;
-                    WB_DAT_O <= `SPICR1_CFG;
+                    WB_ADR_O <= `SPICR2;
+                    WB_DAT_O <= `SPICR2_CFG;
                     WB_WE_O  <= `REQ_WRITE;
 
                     if (WB_ACK_I == 1'b1) begin
                         wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
-                        sm_state <= `S_SPICR2_CYC;
-                    end
-                end
-
-                //*************************************************************
-                // State: S_SPICR2_CYC
-                // Configure EFB as SPI Slave.  This is the restart state.
-                //
-                // CR2 <= 0x00 (Slave Mode)
-                //*************************************************************
-                `S_SPICR2_CYC: begin
-                    wb_cyc   <= 1'b1;
-                    WB_ADR_O <= `SPICR2;
-                    WB_DAT_O <= `SPICR2_CFG;
-                    WB_WE_O  <= `REQ_WRITE;
-
-                    sm_state <= `S_SPICR2_ACK;
-                end
-
-                //*************************************************************
-                // State: S_SPICR2_ACK
-                // Enable EFB SPI Interface (Ack Phase)
-                //*************************************************************
-                `S_SPICR2_ACK: begin
-                    wb_cyc   <= 1'b1;
-                    WB_ADR_O <= `SPICR2;
-                    WB_DAT_O <= `SPICR2_CFG;
-                    WB_WE_O  <= `REQ_WRITE;
-
-                    if (WB_ACK_I == 1'b1) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPISR;
-                        WB_WE_O  <= `REQ_READ;
-
                         sm_state <= `S_WAIT_FOR_TIPN;
                     end
                 end
 
                 //*************************************************************
-                // State: Wait for TIPN
+                // State: S_WAIT_FOR_TIPN
                 // Wait for Not TIP
                 //*************************************************************
                 `S_WAIT_FOR_TIPN: begin
@@ -251,17 +221,21 @@ module ctrl #(
                     WB_ADR_O <= `SPISR;
                     WB_WE_O  <= `REQ_READ;
 
-                    if ((WB_ACK_I == 1'b1) && (WB_DAT_I[7] == 1'b0)) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPIRXDR;
+                    if ( (WB_ACK_I    == 1'b1) &&
+                         (WB_DAT_I[7] == 1'b0) ) begin
+                        wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
                         sm_state <= `S_RXDR_DISCARD1;
+                    end
+                    else if (WB_ACK_I == 1'b1)  begin
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
+                        sm_state <= `S_WAIT_FOR_TIPN;
                     end
                 end
 
                 //*************************************************************
-                // State: RXDR Discard 1
+                // State: S_RXDR_DISCARD1
                 // Discard data from RXDR
                 //
                 // discard <= RXDR
@@ -272,16 +246,14 @@ module ctrl #(
                     WB_WE_O  <= `REQ_READ;
 
                     if (WB_ACK_I == 1'b1) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPIRXDR;
+                        wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
                         sm_state <= `S_RXDR_DISCARD2;
                     end
                 end
 
                 //*************************************************************
-                // State: RXDR Discard 2
+                // State: S_RXDR_DISCARD2
                 // Discard data from RXDR
                 //
                 // discard <= RXDR
@@ -292,17 +264,14 @@ module ctrl #(
                     WB_WE_O  <= `REQ_READ;
 
                     if (WB_ACK_I == 1'b1) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPITXDR;
-                        WB_DAT_O <= 8'h00;
-                        WB_WE_O  <= `REQ_WRITE;
-
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
                         sm_state <= `S_T1_TXDR;
                     end
                 end
 
                 //*************************************************************
-                // State: T1 TXDR
+                // State: S_T1_TXDR
                 // Load T1 Data into TXDR
                 //
                 // TXDR <= T1 data
@@ -314,16 +283,14 @@ module ctrl #(
                     WB_WE_O  <= `REQ_WRITE;
 
                     if (WB_ACK_I == 1'b1) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPISR;
+                        wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
                         sm_state <= `S_WAIT_FOR_TIP;
                     end
                 end
 
                 //*************************************************************
-                // State: Wait for TIP
+                // State: S_WAIT_FOR_TIP
                 // Wait for TIP
                 //*************************************************************
                 `S_WAIT_FOR_TIP: begin
@@ -337,21 +304,22 @@ module ctrl #(
                     if ( (WB_ACK_I    == 1'b1) &&
                          (WB_DAT_I[7] == 1'b1) &&
                          (WB_DAT_I[4] == 1'b1) ) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPITXDR;
-                        WB_DAT_O <= 8'h00;
-                        WB_WE_O  <= `REQ_WRITE;
-
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
                         sm_state <= `S_T2_TXDR;
                     end
                     // Wait for TRDY
                     else if ( (WB_ACK_I    == 1'b1) &&
                               (WB_DAT_I[7] == 1'b1) ) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPISR;
+                        wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
                         sm_state <= `S_T2_TRDY;
+                    end
+                    // Make new Wishbone request
+                    else if (WB_ACK_I == 1'b1) begin
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
+                        sm_state <= `S_WAIT_FOR_TIP;
                     end
                 end
 
@@ -364,18 +332,21 @@ module ctrl #(
                     WB_ADR_O <= `SPISR;
                     WB_WE_O  <= `REQ_READ;
 
-                    if ((WB_ACK_I == 1'b1) && (WB_DAT_I[4] == 1'b1)) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPITXDR;
-                        WB_DAT_O <= 8'h00;
-                        WB_WE_O  <= `REQ_WRITE;
-
+                    if ( (WB_ACK_I    == 1'b1) &&
+                         (WB_DAT_I[4] == 1'b1) ) begin
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
                         sm_state <= `S_T2_TXDR;
+                    end
+                    else if (WB_ACK_I == 1'b1) begin
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
+                        sm_state <= `S_T2_TRDY;
                     end
                 end
 
                 //*************************************************************
-                // State: T2 TXDR
+                // State: S_T2_TXDR
                 // Load T2 Data into TXDR
                 //
                 // TXDR <= T2 data
@@ -387,16 +358,14 @@ module ctrl #(
                     WB_WE_O  <= `REQ_WRITE;
 
                     if (WB_ACK_I == 1'b1) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPISR;
+                        wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
                         sm_state <= `S_R1_RRDY;
                     end
                 end
 
                 //*************************************************************
-                // State: R1 RRDY
+                // State: S_R1_RRDY
                 // Wait for RRDY following T2
                 //*************************************************************
                 `S_R1_RRDY: begin
@@ -410,22 +379,25 @@ module ctrl #(
                          (WB_DAT_I[3] == 1'b0) ) begin
                         wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
-                        sm_state <= `S_SPICR2_CYC;
+                        sm_state <= `S_SPICR2;
                     end
                     // Read ready
                     else if ( (WB_ACK_I    == 1'b1) &&
                               (WB_DAT_I[3] == 1'b1) ) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPIRXDR;
+                        wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
                         sm_state <= `S_R1_RXDR;
+                    end
+                    // Make new Wishbone request
+                    else if (WB_ACK_I == 1'b1) begin
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
+                        sm_state <= `S_R1_RRDY;
                     end
                 end
 
                 //*************************************************************
-                // State: R1 RXDR
+                // State: S_R1_RXDR
                 // Read R1 Data from RXDR, R1 data is the SPI Command
                 //
                 // R1 data <= RXDR
@@ -438,16 +410,14 @@ module ctrl #(
                     if (WB_ACK_I == 1'b1) begin
                         sm_spi_cmd <= WB_DAT_I;
 
-                        wb_cyc     <= 1'b1;
-                        WB_ADR_O   <= `SPISR;
+                        wb_cyc     <= 1'b0;
                         WB_WE_O    <= `REQ_READ;
-
                         sm_state   <= `S_T3_TRDY;
                     end
                 end
 
                 //*************************************************************
-                // State: T3 TRDY
+                // State: S_T3_TRDY
                 // Wait for TRDY
                 //*************************************************************
                 `S_T3_TRDY: begin
@@ -460,28 +430,25 @@ module ctrl #(
                          (WB_DAT_I[7] == 1'b0) ) begin
                         wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
-                        sm_state <= `S_SPICR2_CYC;
+                        sm_state <= `S_SPICR2;
                     end
                     // SPI TX ready
                     else if ( (WB_ACK_I    == 1'b1) &&
                               (WB_DAT_I[4] == 1'b1) ) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPITXDR;
-                        WB_WE_O  <= `REQ_WRITE;
-
-                        case (sm_spi_cmd)
-                            `SPI_CMD_PROTOCOL: WB_DAT_O <= PROTOCOL;
-                            `SPI_CMD_REVISION: WB_DAT_O <= REVISION;
-                            default:           WB_DAT_O <= 8'h00;
-                        endcase
-
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
                         sm_state <= `S_T3_TXDR;
+                    end
+                    // Make new Wishbone request
+                    else if (WB_ACK_I == 1'b1) begin
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
+                        sm_state <= `S_T3_TRDY;
                     end
                 end
 
                 //*************************************************************
-                // State: T3 TXDR
+                // State: S_T3_TXDR
                 // Load T3 Data into TXDR
                 //
                 // TXDR <= T3 data
@@ -491,17 +458,21 @@ module ctrl #(
                     WB_ADR_O <= `SPITXDR;
                     WB_WE_O  <= `REQ_WRITE;
 
-                    if (WB_ACK_I == 1'b1) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPISR;
-                        WB_WE_O  <= `REQ_READ;
+                    case (sm_spi_cmd)
+                        `SPI_CMD_PROTOCOL: WB_DAT_O <= PROTOCOL;
+                        `SPI_CMD_REVISION: WB_DAT_O <= REVISION;
+                        default:           WB_DAT_O <= 8'h00;
+                    endcase
 
+                    if (WB_ACK_I == 1'b1) begin
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
                         sm_state <= `S_RN_RRDY;
                     end
                 end
 
                 //*************************************************************
-                // State: Wait for R2/RN RRDY
+                // State: S_RN_RRDY
                 // Wait for R2/RN RRDY
                 //*************************************************************
                 `S_RN_RRDY: begin
@@ -515,23 +486,26 @@ module ctrl #(
                          (WB_DAT_I[3] == 1'b0) ) begin
                         wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
-                        sm_state <= `S_SPICR2_CYC;
+                        sm_state <= `S_SPICR2;
                     end
                     // RX Ready
                     else if ( (WB_ACK_I    == 1'b1) &&
                               (WB_DAT_I[3] == 1'b1) ) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPIRXDR;
+                        wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
                         sm_state <= `S_RN_RXDR;
+                    end
+                    // Make new Wishbone request
+                    else if (WB_ACK_I == 1'b1) begin
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
+                        sm_state <= `S_RN_RRDY;
                     end
                 end
 
                 //*************************************************************
-                // State: R2/R2+ RX Read
-                // Read R2/R2+ Data fomr RXDR
+                // State: S_RN_RXDR
+                // Read R2/R2+ Data from RXDR
                 //
                 // R2 data <= RXDR
                 //*************************************************************
@@ -543,13 +517,12 @@ module ctrl #(
                     if (WB_ACK_I == 1'b1) begin
                         wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
                         sm_state <= `S_RN_PROCESS;
                     end
                 end
 
                 //*************************************************************
-                // State: R2/R2+ RX Data Processing
+                // State: S_RN_PROCESS
                 // Process the R2/R2+ RX Data word depending on SPI Command
                 //*************************************************************
                 `S_RN_PROCESS: begin
@@ -558,12 +531,11 @@ module ctrl #(
                     WB_WE_O  <= `REQ_READ;
                     sm_state <= `S_TN_TRDY;
 
-                    // ... REMOVED ...
                     sm_spi_count <= sm_spi_count + 8'h01;
                 end
 
                 //*************************************************************
-                // State: Wait for T2/TN TRDY
+                // State: S_TN_TRDY
                 // Wait for T2/TN TRDY
                 //*************************************************************
                 `S_TN_TRDY: begin
@@ -575,34 +547,35 @@ module ctrl #(
                          (WB_DAT_I[7] == 1'b0) ) begin
                         wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
-                        sm_state <= `S_SPICR2_CYC;
+                        sm_state <= `S_SPICR2;
                     end
                     else if ( (WB_ACK_I    == 1'b1) &&
                               (WB_DAT_I[4] == 1'b1) ) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPITXDR;
-                        WB_DAT_O <= sm_spi_count;
-                        WB_WE_O  <= `REQ_WRITE;
-
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
                         sm_state <= `S_TN_TXDR;
+                    end
+                    // Make new Wishbone request
+                    else if (WB_ACK_I == 1'b1) begin
+                        wb_cyc   <= 1'b0;
+                        WB_WE_O  <= `REQ_READ;
+                        sm_state <= `S_TN_TRDY;
                     end
                 end
 
                 //*************************************************************
-                // State: TN TXDR
+                // State: S_TN_TXDR
                 // Load TXDR register with next byte to transmit
                 //*************************************************************
                 `S_TN_TXDR: begin
                     wb_cyc   <= 1'b1;
                     WB_ADR_O <= `SPITXDR;
+                    WB_DAT_O <= sm_spi_count;
                     WB_WE_O  <= `REQ_WRITE;
 
                     if (WB_ACK_I == 1'b1) begin
-                        wb_cyc   <= 1'b1;
-                        WB_ADR_O <= `SPISR;
+                        wb_cyc   <= 1'b0;
                         WB_WE_O  <= `REQ_READ;
-
                         sm_state <= `S_RN_RRDY;
                     end
                 end
